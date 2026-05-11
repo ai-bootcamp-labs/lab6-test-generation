@@ -1,45 +1,54 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.0.0 → 1.1.0
-Bump rationale: MINOR — Principle III is replaced by an expanded
-"III. Testing Principles (NON-NEGOTIABLE)" that adds Test-Driven Development as a
-hard requirement (was RECOMMENDED), introduces a dedicated stack (Jest + Stryker on
-Node.js/TypeScript), and adds mutation-score and branch-coverage targets. Previously
-mandated rules (testing pyramid, ≥ 80% line coverage on business logic) are
-preserved or strengthened, so existing plans remain valid — this is an expansion of
-guidance, not a backward-incompatible redefinition. Sections 3–8 of the Testing
-Principles are reserved for follow-up amendments and explicitly marked as such.
+Version change: 1.2.0 → 1.3.0
+Bump rationale: MINOR — the final three reserved sections of Principle III are now
+normative: §6 Mocking & Test Data, §7 Quality Criteria (CRITICAL), and §8 Tools &
+Frameworks. Mutation-score and coverage thresholds (already set in §2) are restated
+as hard quality gates in §7. Tooling pins (Jest 29, Stryker, npm) and concrete
+script names are recorded in §8. No existing rule is relaxed; this completes
+Principle III.
 
 Modified principles:
-  - III. Testing Pyramid with 80% Business-Logic Coverage (NON-NEGOTIABLE)
-      → III. Testing Principles (NON-NEGOTIABLE)
-        · §1 Testing Philosophy (TDD / RED-GREEN-REFACTOR / spec-first)
-        · §2 Coverage Requirements (pyramid + tooling + 80/75/75 thresholds)
+  - III. Testing Principles — §6, §7, §8 filled in (were TODO placeholders).
 
 Added sections:
-  - Principle III §1 "Testing Philosophy"
-  - Principle III §2 "Coverage Requirements"
-  - Reserved placeholders for Principle III §3–§8 (to be filled in future amendments)
+  - Principle III §6 "Mocking & Test Data"
+  - Principle III §7 "Quality Criteria (CRITICAL)"
+  - Principle III §8 "Tools & Frameworks"
 
 Removed sections:
   - None.
 
 Templates requiring updates:
-  - ✅ .specify/templates/plan-template.md  (Constitution Check remains generic; new
-       coverage thresholds are read at gate-evaluation time)
-  - ✅ .specify/templates/spec-template.md  (no constitutional references; compatible)
-  - ✅ .specify/templates/tasks-template.md (compatible; TDD ordering already aligns
-       with §1 — tests precede implementation tasks)
+  - ✅ .specify/templates/plan-template.md  (Constitution Check remains generic)
+  - ✅ .specify/templates/spec-template.md  (compatible)
+  - ✅ .specify/templates/tasks-template.md (compatible)
   - ✅ .specify/templates/checklist-template.md (compatible)
-  - ⚠ .github/copilot-instructions.md / SpecKit prompt files (no edits required now,
-       but reviewers SHOULD verify TDD/mutation guidance is reflected if those files
-       are regenerated)
+
+Drift from current repository (non-blocking, recorded for follow-up):
+  - `backend/package.json` is missing the npm scripts mandated by §8
+    (`test:unit`, `test:integration`, `test:mutation`) and Stryker is not yet a
+    devDependency. The constitution is the source of truth; the package.json
+    MUST be updated in a follow-up PR. Until then, equivalents are:
+      • `npm test`                 → `npm test`
+      • `npm run test:unit`        → `npx jest --selectProjects unit`
+      • `npm run test:integration` → `npx jest --selectProjects integration`
+      • `npm run test:e2e`         → `npm run test:e2e`  (already present)
+      • `npm run test:cov`         → `npm run test:cov`  (already present)
+      • `npm run test:mutation`    → not yet runnable; install Stryker first.
+  - `backend/jest.config.ts` currently sets `branches: 80` globally; §2/§7
+    require branches ≥ 75. The 80% setting is stricter than the constitutional
+    floor and is therefore compliant; lowering it would require a separate
+    amendment.
 
 Follow-up TODOs:
-  - TODO(TESTING_PRINCIPLES_3_TO_8): user has signalled 6 additional Testing
-    Principle sections will be added in subsequent amendments. Each addition is
-    expected to be a MINOR bump unless it relaxes or removes an existing rule.
+  - TODO(STRYKER_SETUP): add `@stryker-mutator/core` and
+    `@stryker-mutator/jest-runner` to `backend/devDependencies`, create
+    `backend/stryker.conf.js` with `thresholds.break = 75`, and add the
+    `test:unit`, `test:integration`, and `test:mutation` npm scripts.
+  - Principle III is now complete (§1–§8). Future testing-related amendments
+    should extend, not replace, these sections.
 -->
 
 # lab5-speckit Constitution
@@ -178,29 +187,271 @@ coverage is gamed by tests that execute code without asserting on its behaviour 
 mutation testing is the truth-teller. Pinning the stack (Jest + Stryker on
 Node 20 / TypeScript) removes ambiguity for tooling and CI.
 
-#### §3 Reserved — Test Structure & Naming
+#### §3 Test Types & Organization
 
-TODO(TESTING_PRINCIPLES_3): to be defined in a follow-up amendment.
+All tests live under `backend/tests/**` and are routed to the correct Jest project
+by their location:
 
-#### §4 Reserved — Test Data & Fixtures
+- **Unit tests** — `backend/tests/unit/**/*.spec.ts`. New unit-test files MUST
+  **mirror the `backend/src/` structure** (e.g., `src/auth/services/login.service.ts`
+  → `tests/unit/auth/services/login.service.spec.ts`). One test file per source
+  file is the default; if a single source file warrants multiple test files for
+  size or focus reasons, place them in a sibling folder named after the source
+  file (`tests/unit/auth/services/login.service/<focus>.spec.ts`).
+  - **Legacy exception**: existing user-story groupings
+    (`tests/unit/us1/`, `tests/unit/us2/`, …) MAY remain in place; new tests for
+    those modules MAY continue the user-story grouping until a refactor moves
+    them. New modules MUST use the mirror layout.
+- **Integration tests** — `backend/tests/integration/**/*.spec.ts`. Group by
+  feature / user story (the existing `tests/integration/us1..us4/` layout is the
+  canonical pattern). Each file MUST exercise a real boundary (HTTP via
+  `supertest`, PostgreSQL via Testcontainers, etc.) and MUST NOT mock the
+  collaborator it is integration-testing.
+- **End-to-end tests** — `backend/tests/e2e/**/*.e2e.spec.ts`. Group by user
+  journey, one file per journey (the existing
+  `us1-register-verify.e2e.spec.ts`, `us2-login.e2e.spec.ts`,
+  `us3-password-reset.e2e.spec.ts`, `us4-session-expiry.e2e.spec.ts` files are
+  the canonical pattern). E2E files MUST drive the system through its public
+  HTTP surface only.
+- **Cross-cutting suites** — `backend/tests/security/**/*.spec.ts` and
+  `backend/tests/load/**/*.load.ts` are permitted and MUST be referenced by
+  Principle III §7 once that section is filled in.
+- **Test helpers** — reusable helpers MUST live under a `_helpers/` folder
+  adjacent to the suites they serve (e.g., `tests/integration/_helpers/db.ts`)
+  and MUST NOT be imported from `backend/src/`.
 
-TODO(TESTING_PRINCIPLES_4): to be defined in a follow-up amendment.
+#### §4 Naming Conventions
 
-#### §5 Reserved — Mocking & Test Doubles
+File, suite, and case names MUST be predictable and grep-friendly:
 
-TODO(TESTING_PRINCIPLES_5): to be defined in a follow-up amendment.
+- **Unit & integration test files**: `<ComponentName>.spec.ts`, where
+  `<ComponentName>` matches the source file's base name in the same casing
+  (e.g., `login.service.ts` → `login.service.spec.ts`,
+  `password-policy.ts` → `password-policy.spec.ts`).
+  - The `.test.ts` extension is **forbidden** in this repository to keep
+    discovery patterns and Jest project globs consistent with the existing
+    convention.
+  - Repository-level integration files MAY use a `<feature>.contract.spec.ts`
+    suffix when they verify an OpenAPI / schema contract
+    (e.g., `register.contract.spec.ts`).
+- **E2E test files**: `<user-journey-name>.e2e.spec.ts` in `kebab-case`,
+  beginning with the user-story id where applicable
+  (e.g., `us3-password-reset.e2e.spec.ts`, `account-delete.e2e.spec.ts`).
+- **`describe` blocks** name the unit under test with the same identifier as
+  the source symbol: `describe('LoginService', () => { … })`,
+  `describe('passwordPolicy', () => { … })`. Nested `describe` blocks MAY name
+  a method or scenario group: `describe('LoginService.attempt', () => { … })`.
+- **`it` blocks** read as a sentence and MUST start with `should`, stating the
+  expected outcome and the triggering condition:
+  `it('should reject login when the password is incorrect', …)`.
+  `it('should issue a session cookie when credentials are valid', …)`.
+  Test names MUST NOT describe internal mechanics ("calls bcrypt.compare")
+  unless the mechanic is the documented contract.
+- **Test utility names** follow the same Clean-Code rules as production code
+  (Principle I); helper factories SHOULD use the `make<Thing>` /
+  `build<Thing>` prefix (e.g., `makeUser`, `buildLoginRequest`).
 
-#### §6 Reserved — Performance & Determinism
+#### §5 Test Anatomy
 
-TODO(TESTING_PRINCIPLES_6): to be defined in a follow-up amendment.
+Every test MUST be readable on its own and MUST follow the Arrange–Act–Assert
+structure:
 
-#### §7 Reserved — Security & Contract Testing
+- **Arrange–Act–Assert (AAA)** is the primary pattern. The three phases SHOULD
+  be visually separated by a single blank line, and each phase SHOULD have a
+  clear single responsibility. The **Act** phase SHOULD be exactly one
+  statement that exercises the system under test; if it is not, extract a
+  helper rather than expanding the phase.
+  - For asynchronous code, await the act expression directly
+    (`const result = await service.attempt(input);`); do not bury the act
+    inside `expect(…).rejects` chains unless the assertion *is* the
+    rejection.
+  - The **Assert** phase MUST contain at least one `expect` and SHOULD assert
+    on observable behaviour (return value, emitted event, persisted row,
+    HTTP response), not on internal call sequences, except where the
+    interaction *is* the contract (e.g., a port adapter).
+- **Setup belongs in `beforeEach`**, not `beforeAll`. Each test MUST start from
+  a freshly-arranged state so that running a single `it` in isolation
+  (`jest -t "should …"`) produces the same outcome as running the full file.
+  - `beforeAll` is permitted **only** for expensive, read-only resources
+    (e.g., starting a Testcontainers PostgreSQL instance, compiling a schema)
+    and MUST be paired with per-test cleanup (`afterEach` truncate, fresh
+    transaction, etc.) so no state leaks between tests.
+  - `afterAll` MUST tear down anything `beforeAll` allocated.
+- **Test independence is mandatory.** Tests MUST NOT depend on execution
+  order, on side effects from earlier tests in the file, or on other test
+  files. The suite MUST pass under Jest's default randomised /
+  parallel execution; tests that require serial execution MUST opt in
+  explicitly via the relevant Jest project configuration and document why.
+- **No shared mutable global state.** Module-level `let`s holding
+  test-fixture data, singleton clients reused across tests, and writable
+  globals on `globalThis` are FORBIDDEN. Shared *immutable* constants
+  (frozen objects, type definitions) and shared *factories* (pure functions
+  that return fresh state) are permitted and encouraged.
+- **One logical assertion per test.** A test SHOULD verify a single
+  behaviour; multiple `expect` calls are acceptable when they all describe
+  facets of the same outcome (e.g., status code + body + header on one
+  HTTP response). Tests that assert on unrelated behaviours MUST be split.
 
-TODO(TESTING_PRINCIPLES_7): to be defined in a follow-up amendment.
+#### §6 Mocking & Test Data
 
-#### §8 Reserved — CI Integration & Reporting
+The goal of test doubles is to make tests **fast, deterministic, and focused on
+the unit under test**, not to replace collaborators reflexively.
 
-TODO(TESTING_PRINCIPLES_8): to be defined in a follow-up amendment.
+- **Mock** — use Jest mocks (`jest.fn()`, `jest.mock('module')`) for **external
+  services you do not own and cannot run cheaply in-process**:
+    • outbound email (the `email.port.ts` adapter / Nodemailer transport),
+    • third-party HTTP APIs,
+    • payment gateways, SMS providers, push services.
+  Mocks MUST assert on the message contract (URL, payload shape) only when that
+  contract is the behaviour under test; otherwise inspect the resulting state.
+- **Stub** — replace **time-dependent and non-deterministic functions** so tests
+  are reproducible:
+    • `Date.now()`, `new Date()`, `performance.now()`, and the `clock.port.ts`
+      adapter MUST be stubbed in any test whose outcome depends on time.
+    • Use `jest.useFakeTimers({ now: <ISO> })` with `jest.setSystemTime(…)`,
+      and prefer injecting the project's `Clock` port over patching globals
+      where possible.
+    • Random sources (`Math.random`, `crypto.randomUUID`,
+      `crypto.randomBytes`) MUST be seeded or stubbed when their output
+      affects assertions — see Token / verification-code generation in
+      `auth/domain/token.ts`.
+- **Fake** — use a hand-written **in-memory implementation of a port** for unit
+  tests (e.g., an in-memory `UsersRepository` that satisfies the same
+  interface as `users.repo.ts`). Fakes MUST implement the full port contract
+  and SHOULD live under `tests/unit/_helpers/fakes/`. Integration tests MUST
+  use the real adapter against Testcontainers PostgreSQL, not a fake.
+- **Test fixtures** — store complex, reusable input data (sample JWTs, OpenAPI
+  request bodies, multi-row DB seeds) under `tests/**/_helpers/fixtures/` as
+  typed TypeScript modules, not as JSON blobs scattered in spec files. Each
+  fixture export MUST carry a JSDoc block describing its intent (Principle IV).
+- **Helper extraction is mandatory** when test setup is repeated more than
+  twice. Standard helpers include:
+    • `createTestUser(overrides?)` — builds a valid `User` aggregate with
+      sensible defaults; located under `tests/**/_helpers/`.
+    • `setupMockEmailPort()` — returns a Jest-mocked `EmailPort` plus an
+      `expectEmailSent(…)` assertion helper.
+    • `withTestDb(callback)` — wraps a test in a Testcontainers PostgreSQL
+      transaction that rolls back on completion (integration tier).
+  These helpers MUST be pure with respect to global state (no module-level
+  mutable singletons — see §5).
+- **Do NOT mock**:
+    • **Code you own** that is cheap to instantiate (domain entities, value
+      objects, pure functions, in-process services). Use the real thing; if
+      it is hard to use directly, the design — not the test — is wrong.
+    • **Simple utilities** (date formatters, string helpers, validators).
+    • **The system under test itself** (no spying on private methods of the
+      class you are testing — see §7 anti-patterns).
+  Reaching for a mock to bypass an awkward collaborator is a design smell;
+  refactor to a port + adapter (the existing `auth/adapters/*.port.ts`
+  pattern) instead.
+
+#### §7 Quality Criteria (CRITICAL)
+
+This section defines what "good" means for a test in this repository. PR
+reviewers MUST evaluate every test against the lists below; failing tests
+that nonetheless violate these criteria MUST NOT be merged.
+
+**A good test:**
+
+- **Tests observable behaviour, not implementation details.** Assertions
+  target return values, persisted state, emitted events, HTTP responses,
+  and other facts visible at the public boundary. They MUST NOT pin internal
+  call sequences, private fields, or method-resolution order unless the
+  interaction *is* the contract (e.g., a port adapter).
+- **Has meaningful assertions.** Tautological assertions are FORBIDDEN:
+    • `expect(x).toBe(x)`, `expect(true).toBe(true)`, `expect(value).toEqual(value)`,
+    • `expect(fn()).toBeDefined()` where `fn` always returns a value,
+    • assertions that re-derive the expected value from the production code
+      under test ("oracle laundering"). The expected value (the **oracle**)
+      MUST be a literal, a fixture, or independently computed by the test
+      author and reviewed by a human.
+- **Tests one thing.** A test SHOULD verify a single behaviour
+  (multi-`expect` is fine when all `expect`s describe one outcome — see §5).
+- **Is fast.** Soft limits, enforced by reviewer judgement and Jest
+  `testTimeout`:
+    • Unit test — **< 1 s** wall-clock (target: tens of ms).
+    • Integration test — **< 5 s** wall-clock per test.
+    • E2E test — no hard cap, but the full E2E suite SHOULD complete in
+      under 5 minutes locally.
+- **Is deterministic.** Repeated runs on the same code MUST produce the same
+  pass/fail result. Sources of non-determinism (time, randomness, network,
+  test ordering, parallel writes to shared resources) MUST be controlled per
+  §5 and §6.
+
+**Quality gates (enforced in CI):**
+
+- **Mutation score ≥ 75%** on business-logic modules, measured by **Stryker**
+  (`@stryker-mutator/core` + `@stryker-mutator/jest-runner`). Stryker's
+  `thresholds.break` MUST be set to `75`; PRs that drop the score below 75%
+  MUST be blocked.
+- **No always-true assertions.** Tautological tests (see list above) MUST be
+  caught in code review and SHOULD be detected mechanically where possible
+  (e.g., custom ESLint rules or `eslint-plugin-jest`).
+- **Oracles are human-validated.** Every expected value, fixture, and golden
+  output MUST be reviewed by a human reviewer who is not the author. Test
+  oracles generated by an AI tool MUST be explicitly checked and the review
+  noted in the PR description.
+- **Coverage**: line ≥ 80%, branch ≥ 75% on business-logic modules
+  (restated from §2; enforced by Jest `coverageThreshold`).
+
+**Anti-patterns to avoid (any one of these is a blocking review comment):**
+
+- **Testing private methods or internal state.** If a behaviour is worth
+  testing, expose it through the public contract or extract a collaborator.
+- **Interdependent tests.** Any reliance on previous test execution —
+  shared in-memory state, ordering assumptions, leftover database rows —
+  is forbidden (see §5).
+- **Brittle tests.** Tests that fail on safe refactorings (renaming an
+  internal helper, reordering independent operations, changing a log
+  message) MUST be rewritten against observable behaviour.
+- **Flaky tests.** Intermittent failures are NEVER acceptable. A flaky test
+  MUST be quarantined (`it.skip` with a linked tracking issue) within one
+  business day of detection and fixed or deleted within one week.
+  `jest.retryTimes` MUST NOT be used to mask flakiness.
+- **Tests without assertions.** A test body with no `expect` (or equivalent)
+  is a no-op disguised as coverage and MUST be rejected.
+- **Copy-pasted test logic.** Repeated arrange / mock-setup blocks MUST be
+  extracted into helpers per §6. "Three strikes and you refactor" applies.
+
+#### §8 Tools & Frameworks
+
+Testing tooling is **pinned** to keep CI, local runs, and reviewer expectations
+in lock-step. Substitutions require an amendment to this section.
+
+- **Package manager**: **npm** (the lockfile of record is
+  `backend/package-lock.json`). Do not commit `pnpm-lock.yaml` or `yarn.lock`.
+- **Static analysis** (gates on every PR — see Workflow Gate #1 and #2):
+    • **TypeScript strict mode** via `tsc --noEmit` — see Principle II.
+    • **ESLint** with `@typescript-eslint/strict` and
+      `eslint-plugin-jsdoc` — zero warnings.
+    • **Prettier** — no formatting diff.
+- **Unit & Integration testing**:
+    • Framework: **Jest 29.x** (`jest`, `@types/jest`, `ts-jest` ESM
+      preset — see `backend/jest.config.ts`).
+    • Assertion library: **Jest `expect`** (no `chai`, no `assert`).
+    • Mocking: **Jest mocks** (`jest.fn`, `jest.mock`, `jest.spyOn`,
+      `jest.useFakeTimers`); no `sinon`.
+    • HTTP testing: **`supertest`** against the real Express app.
+    • Database integration: **`testcontainers`** /
+      **`@testcontainers/postgresql`** — do not point integration tests at
+      a developer's local PostgreSQL.
+- **Coverage & mutation**:
+    • Coverage tool: **Jest built-in** (`jest --coverage`); thresholds
+      configured in `backend/jest.config.ts` per §2/§7.
+    • Mutation testing: **Stryker** (`@stryker-mutator/core` and
+      `@stryker-mutator/jest-runner`) with `thresholds.break = 75`.
+      Configuration MUST live in `backend/stryker.conf.js`.
+- **Required npm scripts** in `backend/package.json` (MUST be present and
+  behave as described):
+    • `npm test` — runs the full Jest suite (all projects).
+    • `npm run test:unit` — `jest --selectProjects unit`.
+    • `npm run test:integration` — `jest --selectProjects integration`.
+    • `npm run test:e2e` — `jest --selectProjects e2e` (already present).
+    • `npm run test:cov` — `jest --coverage` (already present).
+    • `npm run test:mutation` — `stryker run`.
+  Any script missing from `backend/package.json` is recorded as a follow-up
+  TODO in the Sync Impact Report at the top of this file and MUST be added
+  in the next infrastructure PR.
 
 ### IV. JSDoc Documentation Mandate
 
@@ -281,4 +532,4 @@ supersedes any conflicting practice or convention.
   `.github/copilot-instructions.md` and the `.specify/templates/` files; those files
   MUST be kept consistent with this Constitution.
 
-**Version**: 1.1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-11
+**Version**: 1.3.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-11
