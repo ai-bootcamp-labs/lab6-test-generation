@@ -57,6 +57,7 @@ export class PasswordResetService {
    * Initiate a password-reset request. Always succeeds in the caller's view
    * regardless of whether the email is known.
    * @param input - Email address.
+   * @param input.email
    * @returns Acceptance envelope.
    */
   async request(input: { email: string }): Promise<{ accepted: true }> {
@@ -90,6 +91,8 @@ export class PasswordResetService {
   /**
    * Consume a reset token and apply a new password.
    * @param input - Plaintext token + new password.
+   * @param input.token
+   * @param input.password
    * @returns Resolves on success.
    * @throws {ValidationError} Token is missing/unknown OR new password is weak.
    * @throws {TokenExpiredError} Token is past its TTL (with 60 s leeway).

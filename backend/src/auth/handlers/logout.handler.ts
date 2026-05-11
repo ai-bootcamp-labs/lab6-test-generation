@@ -12,7 +12,8 @@ import { CSRF_COOKIE_NAME } from '../middleware/csrf.js';
  */
 export function logoutHandler(service: LogoutService, isProduction: boolean) {
   return async (req: Request, res: Response): Promise<void> => {
-    const session = req.session!;
+    const session = req.session;
+    if (!session) throw new Error('logoutHandler must be mounted behind requireSession');
     await service.logout(session.id, session.userId);
     const clearOpts = {
       sameSite: 'lax' as const,

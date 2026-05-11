@@ -1,0 +1,17 @@
+{
+  "$schema": "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
+  "testRunner": "jest",
+  "reporters": ["progress", "clear-text", "html"],
+  "coverageAnalysis": "perTest",
+  "jest": {
+    "projectType": "custom",
+    "configFile": "jest.stryker.config.cjs",
+    "enableFindRelatedTests": false
+  },
+  "testRunnerNodeArgs": ["--experimental-vm-modules"],
+  "timeoutMS": 30000,
+  "timeoutFactor": 2,
+  "mutate": [
+    "src/auth/services/login.service.ts"
+  ]
+}

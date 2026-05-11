@@ -1,0 +1,8 @@
+﻿lint-report.txt
+
+# stryker temp files
+.stryker-tmp
+
+reports/
+.stryker-tmp/
+stryker-debug.log

@@ -39,10 +39,13 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
-/** @returns Email of the freshly-created verified user. */
+/**
+ * @param email
+ * @returns Email of the freshly-created verified user.
+ */
 async function seedActiveUser(email: string): Promise<void> {
   const hash = await bcrypt.hash(PWD, 4);
   await h.db

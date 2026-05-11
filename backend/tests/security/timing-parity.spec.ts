@@ -49,15 +49,21 @@ beforeAll(async () => {
 }, 180_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
-/** @returns Sorted ascending array (a copy of `xs`). */
+/**
+ * @param xs
+ * @returns Sorted ascending array (a copy of `xs`).
+ */
 function sortAsc(xs: number[]): number[] {
   return [...xs].sort((a, b) => a - b);
 }
 
-/** @returns p95 (interpolation) of the supplied samples. */
+/**
+ * @param xs
+ * @returns p95 (interpolation) of the supplied samples.
+ */
 function p95(xs: number[]): number {
   const s = sortAsc(xs);
   if (s.length === 0) return 0;
@@ -65,7 +71,11 @@ function p95(xs: number[]): number {
   return s[idx]!;
 }
 
-/** Run `fn()` `n` times and return the durations in milliseconds. */
+/**
+ * Run `fn()` `n` times and return the durations in milliseconds.
+ * @param n
+ * @param fn
+ */
 async function sampleMs(n: number, fn: () => Promise<unknown>): Promise<number[]> {
   const out: number[] = [];
   for (let i = 0; i < n; i += 1) {

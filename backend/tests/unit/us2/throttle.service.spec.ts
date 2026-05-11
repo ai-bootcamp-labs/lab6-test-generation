@@ -9,7 +9,7 @@ describe('ThrottleService', () => {
     for (let i = 0; i < THROTTLE_CONFIG.accountMaxFailures - 1; i += 1) {
       t.recordFailure('alice@x', '1.2.3.4');
     }
-    expect(() => t.assertNotLocked('alice@x', '1.2.3.4')).not.toThrow();
+    expect(() => { t.assertNotLocked('alice@x', '1.2.3.4'); }).not.toThrow();
   });
 
   it('locks the account at the threshold', () => {
@@ -18,7 +18,7 @@ describe('ThrottleService', () => {
     for (let i = 0; i < THROTTLE_CONFIG.accountMaxFailures; i += 1) {
       t.recordFailure('alice@x', '1.2.3.4');
     }
-    expect(() => t.assertNotLocked('alice@x', null)).toThrow(/locked/i);
+    expect(() => { t.assertNotLocked('alice@x', null); }).toThrow(/locked/i);
   });
 
   it('releases the lock after lockoutMs has elapsed', () => {
@@ -28,7 +28,7 @@ describe('ThrottleService', () => {
       t.recordFailure('alice@x', null);
     }
     clock.advance(THROTTLE_CONFIG.accountLockoutMs + 1000);
-    expect(() => t.assertNotLocked('alice@x', null)).not.toThrow();
+    expect(() => { t.assertNotLocked('alice@x', null); }).not.toThrow();
   });
 
   it('locks the IP after 20 failures and rate-limits other accounts from same IP', () => {
@@ -37,7 +37,7 @@ describe('ThrottleService', () => {
     for (let i = 0; i < THROTTLE_CONFIG.ipMaxFailures; i += 1) {
       t.recordFailure('user-' + String(i) + '@x', '9.9.9.9');
     }
-    expect(() => t.assertNotLocked('totally-new@x', '9.9.9.9')).toThrow(/too many|rate/i);
+    expect(() => { t.assertNotLocked('totally-new@x', '9.9.9.9'); }).toThrow(/too many|rate/i);
   });
 
   it('window expiry resets the failure count without lockout', () => {
@@ -50,7 +50,7 @@ describe('ThrottleService', () => {
     t.recordFailure('alice@x', null);
     t.recordFailure('alice@x', null);
     t.recordFailure('alice@x', null);
-    expect(() => t.assertNotLocked('alice@x', null)).not.toThrow();
+    expect(() => { t.assertNotLocked('alice@x', null); }).not.toThrow();
   });
 
   it('recordSuccess clears the per-account counter', () => {
@@ -64,6 +64,6 @@ describe('ThrottleService', () => {
     for (let i = 0; i < THROTTLE_CONFIG.accountMaxFailures - 1; i += 1) {
       t.recordFailure('alice@x', null);
     }
-    expect(() => t.assertNotLocked('alice@x', null)).not.toThrow();
+    expect(() => { t.assertNotLocked('alice@x', null); }).not.toThrow();
   });
 });

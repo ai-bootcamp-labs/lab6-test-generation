@@ -11,8 +11,9 @@ import { CSRF_COOKIE_NAME } from '../middleware/csrf.js';
  */
 export function deleteAccountHandler(service: AccountDeletionService, isProduction: boolean) {
   return async (req: Request, res: Response): Promise<void> => {
-    const session = req.session!;
-    const ip = (req.ip ?? null) as string | null;
+    const session = req.session;
+    if (!session) throw new Error('deleteAccountHandler must be mounted behind requireSession');
+    const ip = req.ip ?? null;
     await service.delete(session.userId, ip);
     const opts = { sameSite: 'lax' as const, secure: isProduction, path: '/' };
     res.clearCookie(SESSION_COOKIE_NAME, { ...opts, httpOnly: true });

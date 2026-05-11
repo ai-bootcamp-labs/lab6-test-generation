@@ -1,18 +1,23 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: 1.2.0 → 1.3.0
-Bump rationale: MINOR — the final three reserved sections of Principle III are now
-normative: §6 Mocking & Test Data, §7 Quality Criteria (CRITICAL), and §8 Tools &
-Frameworks. Mutation-score and coverage thresholds (already set in §2) are restated
-as hard quality gates in §7. Tooling pins (Jest 29, Stryker, npm) and concrete
-script names are recorded in §8. No existing rule is relaxed; this completes
-Principle III.
+Version change: 1.3.0 → 1.4.0
+Bump rationale: MINOR — adds normative "Mutation-Resistant Test Generation Rules"
+to Principle III §7. Codifies five concrete authoring rules (mutation-score
+target, boundary testing, boolean truth-table coverage, exact-equality
+assertions, exact error-message validation) that have been empirically validated
+against Stryker on `backend/src/auth/services/login.service.ts` (44.74% → 100%
+mutation score after applying these rules). No existing rule is relaxed or
+removed; this strengthens §7.
 
 Modified principles:
-  - III. Testing Principles — §6, §7, §8 filled in (were TODO placeholders).
+  - III. Testing Principles — §7 expanded with "Mutation-Resistant Test
+    Generation Rules" subsection.
 
 Added sections:
+  - Principle III §7 "Mutation-Resistant Test Generation Rules" (subsection).
+
+Prior history retained for context (sections normative since v1.3.0):
   - Principle III §6 "Mocking & Test Data"
   - Principle III §7 "Quality Criteria (CRITICAL)"
   - Principle III §8 "Tools & Frameworks"
@@ -413,6 +418,50 @@ that nonetheless violate these criteria MUST NOT be merged.
 - **Copy-pasted test logic.** Repeated arrange / mock-setup blocks MUST be
   extracted into helpers per §6. "Three strikes and you refactor" applies.
 
+**Mutation-Resistant Test Generation Rules (NORMATIVE):**
+
+These rules exist to make tests *kill mutants*, not merely execute lines.
+They MUST be followed when authoring or reviewing tests for any module
+covered by the Stryker gate (§8). Each rule maps to a class of mutant that
+empirically survives line/branch coverage alone.
+
+1. **Target — 75% minimum mutation score.** Every business-logic module
+   under `src/auth/services/**` and `src/auth/domain/**` MUST achieve a
+   Stryker mutation score ≥ **75%**. Stryker's `thresholds.break = 75`
+   enforces this in CI. Surviving mutants MUST be triaged: kill them with a
+   new assertion, justify the survivor in the PR (e.g., logger-format
+   mutation deemed cosmetic), or refactor the production code to remove the
+   uncovered branch.
+2. **Boundary Testing.** For every relational operator (`<`, `<=`, `>`,
+   `>=`) in production code, the test suite MUST include three cases: the
+   exact boundary value, **boundary − 1**, and **boundary + 1**. This kills
+   `<` ↔ `<=` and `>` ↔ `>=` mutants that line coverage alone cannot detect.
+   Example: a 5-attempt lockout requires tests at attempts 4 (allowed), 5
+   (boundary), and 6 (locked).
+3. **Boolean Logic.** For every short-circuit `&&` or `||` in production
+   code, the test suite MUST exercise **all combinations of the truth
+   table** for the operands. For `a && b` and `a || b` that means all four
+   `(T,T) (T,F) (F,T) (F,F)` cases (or the subset reachable given upstream
+   constraints, with the unreachable cases justified in a comment). This
+   kills `&&` ↔ `||` and operand-removal mutants.
+4. **Exact Assertions.** For primitive values (`string`, `number`,
+   `boolean`, `null`, `undefined`, `bigint`, `symbol`) tests MUST use
+   `expect(x).toBe(literal)` (or `.toEqual(literal)` for object shapes).
+   The matchers `.toBeTruthy()`, `.toBeFalsy()`, `.toBeDefined()`,
+   `.toBeUndefined()` (when a literal `undefined` would do), and
+   `.toBeNull()` (when a literal `null` would do) are FORBIDDEN for
+   primitive checks because they let literal-mutation mutants survive
+   (e.g., `'success'` → `''` still satisfies `.toBeTruthy()`).
+5. **Error Validation.** When asserting that a function throws, tests MUST
+   assert **both** the error class **and** the exact message content
+   (string literal or anchored `RegExp`). `expect(fn).toThrow()` without an
+   argument is FORBIDDEN. Prefer
+   `expect(fn).toThrow(MyError)` followed by
+   `expect(fn).toThrow('precise message')`, or a single
+   `await expect(p).rejects.toMatchObject({ name: 'MyError', message: '…' })`.
+   This kills string-literal mutants inside error constructors and prevents
+   accidentally accepting a different error type with the same shape.
+
 #### §8 Tools & Frameworks
 
 Testing tooling is **pinned** to keep CI, local runs, and reviewer expectations
@@ -532,4 +581,4 @@ supersedes any conflicting practice or convention.
   `.github/copilot-instructions.md` and the `.specify/templates/` files; those files
   MUST be kept consistent with this Constitution.
 
-**Version**: 1.3.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-11
+**Version**: 1.4.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-11

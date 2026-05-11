@@ -39,7 +39,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
 /** @param addr - Email. @returns Login cookies for the freshly seeded user. */

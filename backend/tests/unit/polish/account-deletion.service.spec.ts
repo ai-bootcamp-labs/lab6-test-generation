@@ -1,7 +1,7 @@
 import { describe, expect, it } from '@jest/globals';
 import { AccountDeletionService } from '../../../src/auth/services/account-deletion.service.js';
 import { SessionService } from '../../../src/auth/services/session.service.js';
-import { AuditRepository } from '../../../src/auth/repositories/audit.repo.js';
+import type { AuditRepository } from '../../../src/auth/repositories/audit.repo.js';
 import { logger } from '../../../src/infra/logger.js';
 import { FakeClock } from '../_helpers/fakes.js';
 import { InMemoryUsersRepo, InMemoryVerificationRepo } from '../_helpers/in-memory-repos.js';

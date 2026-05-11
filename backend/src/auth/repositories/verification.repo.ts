@@ -26,6 +26,9 @@ export class VerificationRepository {
   /**
    * Insert a new verification token row.
    * @param input - User id, sha256(token) hash, expiry timestamp.
+   * @param input.userId
+   * @param input.tokenHash
+   * @param input.expiresAt
    * @returns The inserted record.
    */
   async insertToken(input: {

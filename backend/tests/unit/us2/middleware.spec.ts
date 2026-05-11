@@ -10,7 +10,12 @@ import type { Session, SessionId } from '../../../src/auth/domain/session.js';
 import type { UserId } from '../../../src/auth/domain/user.js';
 import type { SessionService } from '../../../src/auth/services/session.service.js';
 
-/** @returns Minimal error-mapper terminal middleware. */
+/**
+ * @param _req
+ * @param _res
+ * @param next
+ * @returns Minimal error-mapper terminal middleware.
+ */
 function terminal(_req: Request, _res: Response, next: NextFunction): void {
   next();
 }

@@ -35,7 +35,6 @@ export class VerificationService {
 
   /**
    * Consume a verification token: validate, mark used, flip user to active.
-   *
    * @param token - Plaintext token from the email link.
    * @returns Resolves when the user has been activated.
    * @throws {ValidationError} Token is missing/empty or matches no row.

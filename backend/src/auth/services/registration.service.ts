@@ -44,6 +44,8 @@ export class RegistrationService {
    * already taken we still run a bcrypt hash so attackers cannot infer
    * registration state from latency.
    * @param input - Validated email and plaintext password.
+   * @param input.email
+   * @param input.password
    * @returns Always-acceptable response payload.
    * @throws {ValidationError} If the password fails the strength policy.
    */

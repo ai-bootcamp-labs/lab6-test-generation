@@ -15,7 +15,7 @@ beforeAll(async () => {
 }, 90_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
 describe('UsersRepository + VerificationRepository roundtrip', () => {
