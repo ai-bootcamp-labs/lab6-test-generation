@@ -1,35 +1,45 @@
 <!--
 SYNC IMPACT REPORT
 ==================
-Version change: (template, unversioned) → 1.0.0
-Bump rationale: Initial ratification of the project constitution. All placeholder
-tokens replaced with concrete principles and governance rules.
+Version change: 1.0.0 → 1.1.0
+Bump rationale: MINOR — Principle III is replaced by an expanded
+"III. Testing Principles (NON-NEGOTIABLE)" that adds Test-Driven Development as a
+hard requirement (was RECOMMENDED), introduces a dedicated stack (Jest + Stryker on
+Node.js/TypeScript), and adds mutation-score and branch-coverage targets. Previously
+mandated rules (testing pyramid, ≥ 80% line coverage on business logic) are
+preserved or strengthened, so existing plans remain valid — this is an expansion of
+guidance, not a backward-incompatible redefinition. Sections 3–8 of the Testing
+Principles are reserved for follow-up amendments and explicitly marked as such.
 
 Modified principles:
-  - [PRINCIPLE_1_NAME] → I. Clean Code (NON-NEGOTIABLE)
-  - [PRINCIPLE_2_NAME] → II. TypeScript Strict Mode (NON-NEGOTIABLE)
-  - [PRINCIPLE_3_NAME] → III. Testing Pyramid with 80% Business-Logic Coverage (NON-NEGOTIABLE)
-  - [PRINCIPLE_4_NAME] → IV. JSDoc Documentation Mandate
-  - [PRINCIPLE_5_NAME] → (removed; user requested four principles)
+  - III. Testing Pyramid with 80% Business-Logic Coverage (NON-NEGOTIABLE)
+      → III. Testing Principles (NON-NEGOTIABLE)
+        · §1 Testing Philosophy (TDD / RED-GREEN-REFACTOR / spec-first)
+        · §2 Coverage Requirements (pyramid + tooling + 80/75/75 thresholds)
 
 Added sections:
-  - Additional Constraints & Quality Standards
-  - Development Workflow & Quality Gates
+  - Principle III §1 "Testing Philosophy"
+  - Principle III §2 "Coverage Requirements"
+  - Reserved placeholders for Principle III §3–§8 (to be filled in future amendments)
 
 Removed sections:
-  - None (placeholder section 5 consolidated into the four ratified principles)
+  - None.
 
 Templates requiring updates:
-  - ✅ .specify/templates/plan-template.md  (Constitution Check section is generic and
-       compatible; gates will reference these four principles at planning time)
+  - ✅ .specify/templates/plan-template.md  (Constitution Check remains generic; new
+       coverage thresholds are read at gate-evaluation time)
   - ✅ .specify/templates/spec-template.md  (no constitutional references; compatible)
-  - ✅ .specify/templates/tasks-template.md (compatible; testing/documentation tasks
-       map to Principles III and IV)
+  - ✅ .specify/templates/tasks-template.md (compatible; TDD ordering already aligns
+       with §1 — tests precede implementation tasks)
   - ✅ .specify/templates/checklist-template.md (compatible)
-  - ✅ .github/prompts/speckit.constitution.prompt.md (no edits required)
+  - ⚠ .github/copilot-instructions.md / SpecKit prompt files (no edits required now,
+       but reviewers SHOULD verify TDD/mutation guidance is reflected if those files
+       are regenerated)
 
 Follow-up TODOs:
-  - None. Ratification date set to today since no prior adoption record exists.
+  - TODO(TESTING_PRINCIPLES_3_TO_8): user has signalled 6 additional Testing
+    Principle sections will be added in subsequent amendments. Each addition is
+    expected to be a MINOR bump unless it relaxes or removes an existing rule.
 -->
 
 # lab5-speckit Constitution
@@ -79,29 +89,118 @@ All TypeScript code MUST compile under strict mode:
 **Rationale**: Strict typing catches whole classes of defects at compile time, makes
 refactoring safe, and turns the type system into living documentation.
 
-### III. Testing Pyramid with 80% Business-Logic Coverage (NON-NEGOTIABLE)
+### III. Testing Principles (NON-NEGOTIABLE)
 
-Tests MUST follow the testing-pyramid distribution and meet enforced coverage gates:
+Testing is a first-class engineering activity in this project. All tests run on
+**Node.js ≥ 20** with **TypeScript** sources, executed by **Jest** (unit +
+integration + E2E projects via `--selectProjects`) and mutation-tested by
+**Stryker**. The following sections are normative; sections §3–§8 are reserved for
+forthcoming amendments and MUST be filled before any rule that depends on them is
+enforced.
 
-- **Pyramid shape**: a healthy mix dominated by fast unit tests, supported by a
-  smaller layer of integration tests, and capped by a thin layer of end-to-end tests.
-  As guidance, target roughly 70% unit, 20% integration, 10% E2E by test count; PRs
-  that invert the pyramid (e.g., E2E-heavy) MUST be justified.
-- **Unit tests** MUST be deterministic, isolated from I/O, and run in milliseconds.
-- **Integration tests** MUST cover module boundaries: HTTP handlers, database access,
-  external service contracts, and shared schemas.
-- **End-to-end tests** MUST cover critical user journeys only.
-- **Coverage gate**: business-logic modules (domain services, use-cases, calculation
-  and validation logic) MUST maintain **≥ 80% line and branch coverage**. Coverage
-  is measured and enforced in CI; PRs that drop coverage below the threshold MUST be
-  blocked. Trivial code (DTOs, generated files, framework boilerplate) MAY be
-  excluded via explicit ignore patterns.
-- **TDD is RECOMMENDED**: writing tests before implementation is the preferred
-  default for business logic; bug fixes MUST include a failing regression test first.
+#### §1 Testing Philosophy
 
-**Rationale**: A correctly shaped pyramid yields fast feedback and stable CI, while an
-80% threshold targeted at business logic ensures correctness where it matters without
-forcing low-value tests on trivial code.
+- **Test-Driven Development (TDD) is MANDATORY** for all business-logic code
+  (domain services, use-cases, validators, calculators, repositories' query logic).
+  Production code MUST NOT be written before a failing test that exercises the new
+  behaviour exists in the same PR.
+- The **RED → GREEN → REFACTOR** cycle MUST be followed:
+  1. **RED**: write the smallest test that captures the next required behaviour and
+     watch it fail for the right reason.
+  2. **GREEN**: write the minimum production code required to make the test pass —
+     no extra features, no speculative abstractions.
+  3. **REFACTOR**: with the suite green, remove duplication and improve names and
+     structure; tests MUST stay green throughout.
+  Commits SHOULD make the cycle visible (e.g., `test: …` then `feat: …` then
+  `refactor: …`); squash-merging is permitted but PR description MUST note the
+  cycle was followed.
+- **Tests are written FIRST, before implementation.** Bug fixes MUST start with a
+  failing regression test. PRs that introduce production code with no co-authored
+  test changes MUST be rejected unless the change is provably non-behavioural
+  (formatting, doc-only, dependency bump).
+- **Tests are generated from specifications, not from the implementation.** The
+  source of truth for what to test is the feature spec, contracts (e.g.,
+  `specs/*/contracts/*.openapi.yaml`), data model, and acceptance criteria —
+  **never** the current behaviour of the code under test. Snapshot tests and
+  "characterisation tests" pinned to existing output are FORBIDDEN for new
+  business logic; they are permitted only as a temporary scaffold during legacy
+  refactors and MUST be replaced with spec-derived assertions before the PR
+  merges.
+
+**Rationale**: TDD keeps the design pressure on the public contract, prevents
+over-engineering, and produces an executable specification. Generating tests from
+specs (not code) ensures the suite catches regressions against intended behaviour
+rather than ossifying accidental behaviour.
+
+#### §2 Coverage Requirements
+
+- **Testing Pyramid distribution** (by test count, indicative target):
+  - **~70% Unit tests** — pure functions, domain services, validators, utilities,
+    and other business logic. MUST be deterministic, MUST run without I/O
+    (no DB, no network, no filesystem beyond temp), and MUST complete in
+    milliseconds. Live under `backend/tests/unit/**` and run via the Jest `unit`
+    project.
+  - **~20% Integration tests** — HTTP handlers via `supertest`, repository code
+    against PostgreSQL (Testcontainers), middleware, and any cross-module
+    contract. Live under `backend/tests/integration/**` and run via the Jest
+    `integration` project.
+  - **~10% End-to-end tests** — critical user workflows only (e.g.,
+    register→verify, login, password-reset, session-expiry). Live under
+    `backend/tests/e2e/**` and run via the Jest `e2e` project. PRs that add E2E
+    tests for non-critical flows MUST justify them or move the coverage down the
+    pyramid.
+  - PRs that materially invert the pyramid (e.g., add 5 E2E tests and 0 unit
+    tests for a new service) MUST be rejected.
+- **Static analysis is part of the test suite** and MUST pass in CI on every PR:
+  - `tsc --noEmit` under TypeScript **strict mode** (see Principle II) — zero
+    errors.
+  - **ESLint** with the project's strict ruleset — zero warnings.
+  - **Prettier** — no formatting diff.
+  These gates run before functional tests; a red static-analysis gate MUST fail
+  the build immediately.
+- **Coverage thresholds** (enforced by Jest's `coverageThreshold` and Stryker's
+  `thresholds.break`, measured on business-logic modules; trivial DTOs, generated
+  files, and framework boilerplate MAY be excluded via explicit ignore patterns):
+  - **Line coverage ≥ 80%**
+  - **Branch coverage ≥ 75%**
+  - **Mutation score ≥ 75%** (Stryker, `@stryker-mutator/jest-runner`)
+  CI MUST run `jest --coverage` on every PR and Stryker on at least the nightly
+  build and on any PR labelled `mutation`. PRs that drop any of the three
+  thresholds below target MUST be blocked from merging.
+- **Test code quality**: tests are production code. Principles I (Clean Code), II
+  (Strict TypeScript), and IV (JSDoc on exported helpers) apply to
+  `backend/tests/**` with the same rigour as `backend/src/**`. Shared test
+  helpers belong under `tests/**/_helpers/` and MUST be documented.
+
+**Rationale**: A correctly shaped pyramid yields fast, stable feedback. Combining
+line, branch, and mutation thresholds prevents the common failure mode where line
+coverage is gamed by tests that execute code without asserting on its behaviour —
+mutation testing is the truth-teller. Pinning the stack (Jest + Stryker on
+Node 20 / TypeScript) removes ambiguity for tooling and CI.
+
+#### §3 Reserved — Test Structure & Naming
+
+TODO(TESTING_PRINCIPLES_3): to be defined in a follow-up amendment.
+
+#### §4 Reserved — Test Data & Fixtures
+
+TODO(TESTING_PRINCIPLES_4): to be defined in a follow-up amendment.
+
+#### §5 Reserved — Mocking & Test Doubles
+
+TODO(TESTING_PRINCIPLES_5): to be defined in a follow-up amendment.
+
+#### §6 Reserved — Performance & Determinism
+
+TODO(TESTING_PRINCIPLES_6): to be defined in a follow-up amendment.
+
+#### §7 Reserved — Security & Contract Testing
+
+TODO(TESTING_PRINCIPLES_7): to be defined in a follow-up amendment.
+
+#### §8 Reserved — CI Integration & Reporting
+
+TODO(TESTING_PRINCIPLES_8): to be defined in a follow-up amendment.
 
 ### IV. JSDoc Documentation Mandate
 
@@ -147,8 +246,10 @@ The following gates MUST pass before any PR can merge to the main branch:
 
 1. **Type check**: `tsc --noEmit` succeeds with strict settings.
 2. **Lint & format**: ESLint passes with zero warnings; Prettier reports no diff.
-3. **Tests**: full test suite passes; coverage on business-logic modules ≥ 80% line
-   and branch.
+3. **Tests**: full test suite passes (Jest `unit`, `integration`, `e2e` projects);
+   coverage on business-logic modules meets Principle III §2 thresholds — line ≥ 80%,
+   branch ≥ 75%, and Stryker mutation score ≥ 75% (mutation gate enforced nightly
+   and on PRs labelled `mutation`).
 4. **JSDoc**: all changed exported symbols have up-to-date JSDoc blocks (verified by
    reviewer; tooling such as `eslint-plugin-jsdoc` SHOULD enforce mechanically).
 5. **Code review**: at least one approving review from a maintainer who is not the
@@ -180,4 +281,4 @@ supersedes any conflicting practice or convention.
   `.github/copilot-instructions.md` and the `.specify/templates/` files; those files
   MUST be kept consistent with this Constitution.
 
-**Version**: 1.0.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-10
+**Version**: 1.1.0 | **Ratified**: 2026-05-10 | **Last Amended**: 2026-05-11
