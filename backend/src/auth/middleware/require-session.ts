@@ -25,8 +25,8 @@ export const SESSION_COOKIE_NAME = 'auth_session';
  * @returns Express middleware that attaches `req.session` or fails with 401.
  */
 export function buildRequireSession(service: SessionService) {
-  return async (req: Request, _res: Response, next: NextFunction): Promise<void> => {
-    try {
+  return (req: Request, _res: Response, next: NextFunction): void => {
+    void (async () => {
       const cookies = (req as unknown as { cookies?: Record<string, string> }).cookies ?? {};
       const token = cookies[SESSION_COOKIE_NAME];
       if (!token) throw new InvalidCredentialsError();
@@ -34,8 +34,8 @@ export function buildRequireSession(service: SessionService) {
       req.session = session;
       req.userId = session.userId;
       next();
-    } catch (err) {
+    })().catch((err: unknown) => {
       next(err);
-    }
+    });
   };
 }

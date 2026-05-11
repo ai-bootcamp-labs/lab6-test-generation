@@ -38,7 +38,7 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
 /** @param e - Email. */

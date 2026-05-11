@@ -45,6 +45,9 @@ export class SessionService {
   /**
    * Issue a brand-new session for the given user.
    * @param input - User id, optional client metadata.
+   * @param input.userId
+   * @param input.ip
+   * @param input.userAgent
    * @returns Issued session (row + JWT + CSRF cookie value).
    */
   async issue(input: {
@@ -78,9 +81,10 @@ export class SessionService {
    * @throws {InvalidCredentialsError} On any failure (signature/missing/revoked/expired).
    */
   async validate(token: string): Promise<ValidatedSession> {
+    const nowSec = Math.floor(this.deps.clock.now().getTime() / 1000);
     let claims;
     try {
-      claims = verifySessionToken(this.deps.jwtSecret, token, SESSION_LEEWAY_SEC);
+      claims = verifySessionToken(this.deps.jwtSecret, token, SESSION_LEEWAY_SEC, nowSec);
     } catch {
       throw new InvalidCredentialsError();
     }

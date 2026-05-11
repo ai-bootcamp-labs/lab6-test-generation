@@ -36,7 +36,7 @@ beforeAll(async () => {
 }, 90_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
 describe('Story 1: Register and verify email (E2E)', () => {

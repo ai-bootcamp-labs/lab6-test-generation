@@ -38,6 +38,10 @@ function statusFor(err: unknown): number {
 /**
  * Express error-handling middleware that converts thrown errors into the
  * RFC-9457-style `application/problem+json` shape used by the contract.
+ * @param err
+ * @param req
+ * @param res
+ * @param _next
  */
 export const errorMapper: ErrorRequestHandler = (err, req, res, _next) => {
   const requestId = (req as unknown as { id?: string }).id;
@@ -66,7 +70,7 @@ export const errorMapper: ErrorRequestHandler = (err, req, res, _next) => {
     return;
   }
 
-  logger.error({ requestId, err: { name: (err as Error)?.name, message: (err as Error)?.message } }, 'unhandled_error');
+  logger.error({ requestId, err: { name: (err as Error).name, message: (err as Error).message } }, 'unhandled_error');
   res.status(500).json({
     type: 'urn:auth:error:internal',
     title: 'Internal Server Error',

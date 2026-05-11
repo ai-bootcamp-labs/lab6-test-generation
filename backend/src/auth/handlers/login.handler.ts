@@ -15,7 +15,7 @@ import { CSRF_COOKIE_NAME } from '../middleware/csrf.js';
 export function loginHandler(service: LoginService, isProduction: boolean) {
   return async (req: Request, res: Response): Promise<void> => {
     const body = LoginRequestSchema.parse(req.body);
-    const ip = (req.ip ?? null) as string | null;
+    const ip = (req.ip ?? null);
     const userAgent = req.header('user-agent') ?? null;
     const issued = await service.login({ email: body.email, password: body.password, ip, userAgent });
 
@@ -45,7 +45,8 @@ export function loginHandler(service: LoginService, isProduction: boolean) {
  */
 export function sessionHandler() {
   return (req: Request, res: Response): void => {
-    const s = req.session!;
+    const s = req.session;
+    if (!s) throw new Error('sessionHandler must be mounted behind requireSession');
     res.status(200).json({
       userId: s.userId,
       sessionId: s.id,

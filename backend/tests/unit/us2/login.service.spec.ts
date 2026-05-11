@@ -110,6 +110,6 @@ describe('LoginService.login', () => {
     }
     await service.login({ email: 'alice@example.com', password: PWD, ip: '10.0.0.2', userAgent: null });
     // After success the account counter is cleared, so we can fail 4 more times without lockout.
-    expect(() => throttle.assertNotLocked('alice@example.com', '10.0.0.2')).not.toThrow();
+    expect(() => { throttle.assertNotLocked('alice@example.com', '10.0.0.2'); }).not.toThrow();
   });
 });

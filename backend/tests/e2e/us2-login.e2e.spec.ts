@@ -37,10 +37,13 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
-/** Register + verify a fresh user, returning the email used. */
+/**
+ * Register + verify a fresh user, returning the email used.
+ * @param addr
+ */
 async function registerAndVerify(addr: string): Promise<void> {
   await request(app).post('/auth/register').send({ email: addr, password: PWD });
   const cap = email.sent.filter((m) => m.to === addr).slice(-1)[0]!;

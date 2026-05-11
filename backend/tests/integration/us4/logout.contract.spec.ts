@@ -39,10 +39,13 @@ beforeAll(async () => {
 }, 120_000);
 
 afterAll(async () => {
-  await h?.stop();
+  await h.stop();
 });
 
-/** @returns Set-Cookie tuple from a fresh login. */
+/**
+ * @param emailAddr
+ * @returns Set-Cookie tuple from a fresh login.
+ */
 async function loginFreshUser(emailAddr: string): Promise<{
   sessionCookie: string;
   csrfCookie: string;

@@ -68,8 +68,9 @@ export async function runRetentionOnce(deps: RetentionDeps): Promise<RetentionRu
  */
 export function scheduleRetentionJob(deps: RetentionDeps): cron.ScheduledTask {
   return cron.schedule('15 3 * * *', () => {
-    runRetentionOnce(deps).catch((err) => {
-      deps.logger.error({ err: { message: (err as Error).message } }, 'retention_run_failed');
+    runRetentionOnce(deps).catch((err: unknown) => {
+      const message = err instanceof Error ? err.message : String(err);
+      deps.logger.error({ err: { message } }, 'retention_run_failed');
     });
   });
 }

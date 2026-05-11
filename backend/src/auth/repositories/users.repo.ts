@@ -5,6 +5,15 @@ import type { User, UserId, UserStatus } from '../domain/user.js';
 /**
  * Map a Kysely row to the domain `User` aggregate.
  * @param row - Raw database row.
+ * @param row.id
+ * @param row.email
+ * @param row.password_hash
+ * @param row.status
+ * @param row.verified_at
+ * @param row.deleted_at
+ * @param row.anonymized_at
+ * @param row.created_at
+ * @param row.updated_at
  * @returns Domain user.
  */
 function rowToUser(row: {
@@ -72,6 +81,8 @@ export class UsersRepository {
   /**
    * Insert a new pending user.
    * @param input - Required columns for the new row.
+   * @param input.email
+   * @param input.passwordHash
    * @returns The inserted user (id assigned by the database).
    */
   async insertPending(input: { email: string; passwordHash: string }): Promise<User> {
@@ -173,6 +184,6 @@ export class UsersRepository {
       .where('deleted_at', '<', olderThan)
       .where('anonymized_at', 'is', null)
       .executeTakeFirst();
-    return Number(result.numUpdatedRows ?? 0);
+    return Number(result.numUpdatedRows);
   }
 }

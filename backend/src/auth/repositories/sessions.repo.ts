@@ -4,7 +4,11 @@ import type { Session, SessionId } from '../domain/session.js';
 import type { UserId } from '../domain/user.js';
 import type { RevokeReason } from './tables/us2.tables.js';
 
-/** @param row - DB row. @returns Domain session. */
+/**
+ * Map a raw `auth.sessions` row to the domain {@link Session}.
+ * @param row - DB row.
+ * @returns Domain session.
+ */
 function rowToSession(row: {
   id: string;
   user_id: string;
@@ -39,6 +43,11 @@ export class SessionsRepository {
   /**
    * Insert a new session row.
    * @param input - User, csrf secret, optional metadata, expiry timestamp.
+   * @param input.userId
+   * @param input.csrfSecret
+   * @param input.ip
+   * @param input.userAgent
+   * @param input.expiresAt
    * @returns Persisted session.
    */
   async insert(input: {
@@ -106,7 +115,7 @@ export class SessionsRepository {
       .where('user_id', '=', userId)
       .where('revoked_at', 'is', null)
       .executeTakeFirst();
-    return Number(result.numUpdatedRows ?? 0);
+    return Number(result.numUpdatedRows);
   }
 
   /**

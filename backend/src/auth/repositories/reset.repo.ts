@@ -14,7 +14,11 @@ export interface PasswordResetRecord {
   usedAt: Date | null;
 }
 
-/** @param row - DB row. @returns Domain record. */
+/**
+ * Map a raw `auth.password_resets` row to the domain {@link PasswordResetRecord}.
+ * @param row - DB row.
+ * @returns Domain record.
+ */
 function rowToRecord(row: {
   id: string;
   user_id: string;
@@ -43,6 +47,9 @@ export class PasswordResetRepository {
   /**
    * Insert a new password-reset token row.
    * @param input - User id, sha256(token) hash, expiry timestamp.
+   * @param input.userId
+   * @param input.tokenHash
+   * @param input.expiresAt
    * @returns Persisted record.
    */
   async insertToken(input: {

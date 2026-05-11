@@ -49,6 +49,6 @@ export class AuditRepository {
       .deleteFrom('auth.security_events')
       .where('occurred_at', '<', olderThan)
       .executeTakeFirst();
-    return Number(result.numDeletedRows ?? 0);
+    return Number(result.numDeletedRows);
   }
 }

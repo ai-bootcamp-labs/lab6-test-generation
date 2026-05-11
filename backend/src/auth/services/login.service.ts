@@ -40,6 +40,10 @@ export class LoginService {
    *     prompt the user to verify, while still being distinct from invalid creds.
    *   - On success: resets account throttle counter and issues a session.
    * @param input - Plaintext credentials and request metadata.
+   * @param input.email
+   * @param input.password
+   * @param input.ip
+   * @param input.userAgent
    * @returns Issued session (cookie + jwt) ready for the response.
    * @throws {InvalidCredentialsError} Unknown email or wrong password.
    * @throws {AccountPendingError} Email matches a pending (unverified) user.
