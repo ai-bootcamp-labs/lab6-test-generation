@@ -1,0 +1,350 @@
+openapi: 3.1.0
+info:
+  title: User Authentication API
+  version: 1.0.0
+  description: |
+    HTTP contract for the user authentication module (feature 001-user-auth).
+    All endpoints are served over TLS only. Authenticated endpoints rely on
+    an `HttpOnly`, `Secure`, `SameSite=Lax` session cookie named `auth_session`.
+    State-changing endpoints additionally require an `X-CSRF-Token` header
+    matching the value of the non-HttpOnly `csrf_token` cookie issued at login.
+
+servers:
+  - url: https://api.example.com
+    description: Production
+  - url: http://localhost:3000
+    description: Local development
+
+tags:
+  - name: Registration
+  - name: Verification
+  - name: Login
+  - name: Password Reset
+  - name: Account
+  - name: Session
+
+paths:
+  /auth/register:
+    post:
+      tags: [Registration]
+      summary: Register a new account
+      description: |
+        Creates a pending account and emails a single-use, time-limited
+        verification link (24h expiry). Returns 201 even on duplicate email
+        is NOT done; duplicates return 409 with a generic message and no
+        timing-distinguishable error response.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/RegisterRequest' }
+      responses:
+        '201':
+          description: Account created in pending state; verification email dispatched.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RegisterResponse' }
+        '400':
+          description: Validation failed (invalid email, weak password).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '409':
+          description: Email already in use.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Throttled (per-IP).
+
+  /auth/verify-email:
+    post:
+      tags: [Verification]
+      summary: Consume an email-verification token
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/VerifyEmailRequest' }
+      responses:
+        '204':
+          description: Account verified and transitioned to active.
+        '400':
+          description: Token missing or malformed.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '410':
+          description: Token expired or already used.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+
+  /auth/verify-email/resend:
+    post:
+      tags: [Verification]
+      summary: Request a new verification email for a pending account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailOnlyRequest' }
+      responses:
+        '202':
+          description: |
+            Generic acceptance. The response is identical regardless of
+            whether the email is registered or in a pending state, to
+            prevent enumeration.
+        '429':
+          description: Throttled (per-IP / per-account).
+
+  /auth/login:
+    post:
+      tags: [Login]
+      summary: Authenticate and start a session
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/LoginRequest' }
+      responses:
+        '200':
+          description: Authentication succeeded; session and CSRF cookies set.
+          headers:
+            Set-Cookie:
+              description: |
+                Two cookies are set:
+                  * `auth_session=<jwt>; HttpOnly; Secure; SameSite=Lax; Path=/; Max-Age=86400`
+                  * `csrf_token=<random>; Secure; SameSite=Lax; Path=/; Max-Age=86400`
+              schema: { type: string }
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/LoginResponse' }
+        '401':
+          description: |
+            Generic invalid-credentials error (covers wrong password AND
+            unknown email; FR-009).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '403':
+          description: Account is pending email verification.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '423':
+          description: Account temporarily locked due to repeated failures (FR-010).
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Error' }
+        '429':
+          description: Source IP throttled (FR-010).
+
+  /auth/logout:
+    post:
+      tags: [Session]
+      summary: Revoke the current session
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        '204':
+          description: Session revoked; cookies cleared.
+        '401':
+          description: No active session.
+
+  /auth/password-reset/request:
+    post:
+      tags: [Password Reset]
+      summary: Request a password-reset email
+      description: |
+        Returns the same generic 202 regardless of whether the email exists
+        (FR-014, SC-006).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/EmailOnlyRequest' }
+      responses:
+        '202':
+          description: Generic acceptance.
+        '429':
+          description: Throttled.
+
+  /auth/password-reset/confirm:
+    post:
+      tags: [Password Reset]
+      summary: Consume a reset token and set a new password
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: '#/components/schemas/PasswordResetConfirmRequest' }
+      responses:
+        '204':
+          description: Password updated; all existing sessions invalidated (FR-017).
+        '400':
+          description: Validation failed (weak password, missing token).
+        '410':
+          description: Token expired or already used.
+
+  /auth/account:
+    delete:
+      tags: [Account]
+      summary: Delete the authenticated account (self-service)
+      security:
+        - sessionCookie: []
+          csrfHeader: []
+      responses:
+        '204':
+          description: |
+            Account marked disabled, all sessions revoked, outstanding
+            verification/reset tokens invalidated. PII anonymization
+            scheduled within 30 days.
+        '401':
+          description: Not authenticated.
+
+  /auth/session:
+    get:
+      tags: [Session]
+      summary: Inspect the current session (returns minimal user view)
+      security:
+        - sessionCookie: []
+      responses:
+        '200':
+          description: Session is valid.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/SessionView' }
+        '401':
+          description: No active session, expired, or revoked.
+
+components:
+  securitySchemes:
+    sessionCookie:
+      type: apiKey
+      in: cookie
+      name: auth_session
+      description: HttpOnly, Secure, SameSite=Lax JWT cookie carrying an opaque session reference.
+    csrfHeader:
+      type: apiKey
+      in: header
+      name: X-CSRF-Token
+      description: Must equal the value of the non-HttpOnly `csrf_token` cookie issued at login.
+
+  schemas:
+    RegisterRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 12
+          maxLength: 128
+          description: |
+            Must contain at least three of: lowercase, uppercase, digit,
+            symbol. Common/breached passwords are rejected.
+
+    RegisterResponse:
+      type: object
+      required: [userId, status]
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          format: uuid
+        status:
+          type: string
+          enum: [pending]
+
+    VerifyEmailRequest:
+      type: object
+      required: [token]
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 256
+
+    EmailOnlyRequest:
+      type: object
+      required: [email]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+
+    LoginRequest:
+      type: object
+      required: [email, password]
+      additionalProperties: false
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 254
+        password:
+          type: string
+          minLength: 1
+          maxLength: 128
+
+    LoginResponse:
+      type: object
+      required: [userId, expiresAt]
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          format: uuid
+        expiresAt:
+          type: string
+          format: date-time
+
+    PasswordResetConfirmRequest:
+      type: object
+      required: [token, newPassword]
+      additionalProperties: false
+      properties:
+        token:
+          type: string
+          minLength: 32
+          maxLength: 256
+        newPassword:
+          type: string
+          minLength: 12
+          maxLength: 128
+
+    SessionView:
+      type: object
+      required: [userId, expiresAt]
+      additionalProperties: false
+      properties:
+        userId:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+        expiresAt:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required: [code, message]
+      additionalProperties: false
+      properties:
+        code:
+          type: string
+          description: Machine-readable error code (e.g., 'invalid_credentials').
+        message:
+          type: string
+          description: Human-readable, non-enumerating message.
